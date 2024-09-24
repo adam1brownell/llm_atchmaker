@@ -4,7 +4,7 @@ import time
 import random
 import os
 import sys
-from rag import EMBED_MODEL, retrieve
+from rag import EMBED_MODEL, retrieve, retrieve_full_profiles
 
 st.set_page_config(layout="wide")
 
@@ -221,13 +221,17 @@ def main():
             st.rerun()
 
     elif not st.session_state.seen_profiles:
+    # if not st.session_state.seen_profiles:
 
         top_p_ids, top_chunks, similarity_scores = retrieve(TEST_QUERY,k=K)
+        stats,essays = retrieve_full_profiles(top_p_ids)
 
         columns = st.columns([1 for i in range(K)])
 
         for i in range(K):
             col = columns[i]
+            p_stats = stats.loc[stats.p_id==top_p_ids[i]].reset_index(drop=True)
+            p_essays = essays.loc[essays.p_id==top_p_ids[i]]
             with col:
                 st.title(f"Profile #{top_p_ids[i]}")
                 if (st.session_state.profile_score[i] is not None) and (st.session_state.profile_score[i] != 50):
@@ -243,9 +247,17 @@ def main():
                     score_str = f"Score: {st.session_state.profile_score[i]}/100"
                     st.progress(st.session_state.profile_score[i],text=score_str)
                 
+                st.dataframe(p_stats,use_container_width=True)
+                for q in p_essays.columns:
+                    if q == 'p_id':
+                        continue
+                    answer = p_essays[q].values[0]
+                    if isinstance(answer, str):
+                        with st.expander(f'{q}'):
+                            st.write(answer)
+
                 st.write(top_chunks[i])
 
-                
                 if st.button(f"Rate Profile",key=f"rate_{i}"):
                     st.session_state.profile_show_slider[i] = True
                 

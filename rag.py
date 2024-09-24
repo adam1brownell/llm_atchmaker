@@ -5,6 +5,7 @@ import faiss
 import os
 import pickle
 from tqdm import tqdm
+import streamlit as st
 
 # Load Embedding model
 print("Loading Embed Model...")
@@ -95,6 +96,7 @@ def db_builder(csv_path='data_profiles.csv',
     print(f"Vector store and metadata saved at {index_path} and {metadata_path}")
 
 # Function to retrieve the top K most similar elements based on query
+@st.cache_data
 def retrieve(query, k=5, 
              index_path='data/vector_index.faiss', metadata_path='data/vector_metadata.pkl'):
     # Load FAISS index
@@ -123,7 +125,38 @@ def retrieve(query, k=5,
 
     return result_p_ids, result_chunks, distances
 
-# Example usage
+@st.cache_data
+def retrieve_full_profiles(p_ids):
+    okc_pd = pd.read_csv("data/okcupid.csv")
+    okc_pd["p_id"]=okc_pd.index
+
+    full_profiles = okc_pd[okc_pd.p_id.isin(p_ids)]
+
+    stats =  full_profiles.loc[:, ~full_profiles.columns.str.contains('essay')]
+    essays = full_profiles.filter(like='essay')
+    essays = pd.concat([essays, full_profiles[['p_id']]], axis=1)
+
+    column_mapping = {
+    'essay0': 'My self summary',
+    'essay1': 'What I’m doing with my life',
+    'essay2': 'I’m really good at',
+    'essay3': 'The first thing people usually notice about me',
+    'essay4': 'Favorite books, movies, shows, music, and food',
+    'essay5': 'The six things I could never do without',
+    'essay6': 'I spend a lot of time thinking about',
+    'essay7': 'On a typical Friday night I am',
+    'essay8': 'The most private thing I am willing to admit',
+    'essay9': 'You should message me if'
+}
+
+    # Rename the columns in the DataFrame
+    essays.rename(columns=column_mapping, inplace=True)
+
+    return(stats,essays)
+    
+
+
+
 if __name__ == "__main__":
     print("Building DB...")
     db_builder()
