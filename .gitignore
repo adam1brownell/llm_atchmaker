@@ -1,0 +1,22 @@
+# Ignore the virtual environment & local-rag
+matchmakerENV/
+local-rag/
+.DS_Store
+data/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Environment variables
+.env
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Ignore Python virtual environments
+venv/
