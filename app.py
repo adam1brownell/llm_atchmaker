@@ -20,7 +20,7 @@ ai_intro_message2 = """
 To start, what's your name?
 """
 ai_intro_message3 = """
-Now, tell me a little about yourself! Feel free to brag a little.
+Now, tell me a little about yourself! Feel free to brag a little. Also fill out the Data Filters in the side bar when you have a chance
 """
 ai_intro_message4 = """
 Great, thanks for sharing. And what are you looking for in a romantic partner?
@@ -35,7 +35,7 @@ Let me look for some dating profiles...
 """
 
 ai_intro_message7 = """
-OK! Here are a few profiles that may be interesting to you, and why I think you may like them. Please review them and give them a score so I know how close/far off I am from finding a good match.
+OK! Here are a few profiles that may be interesting to you, and why I think you may like them (🟢). Please review them and give them a score so I know how close/far off I am from finding a good match.
 """
 
 okc_prompts =[
@@ -66,6 +66,7 @@ def score_color(progress):
 
 def main():
     st.title("AI Matchmaker")
+
 
     if 'messages' not in st.session_state:
         # State Update
@@ -100,6 +101,33 @@ def main():
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"],unsafe_allow_html=True)
+
+    # SIDE BAR INFO
+    # Only revealed after name turn
+    if st.session_state.name_flag:
+        st.sidebar.title("Dating Filters")
+        st.session_state.sex = None
+        st.session_state.sex_preference = None
+
+        st.session_state.sex = st.sidebar.selectbox(
+            'You are',
+            ['Male', 'Female', None]
+        )
+        st.session_state.sex_preference = st.sidebar.selectbox(
+            'Looking for',
+            ['Male', 'Female', None]
+        )
+
+        # Add a slider in the sidebar
+        st.session_state.age_range = st.sidebar.slider(
+            'Age Range',
+            18, 100, (25, 45)
+        )
+
+        st.sidebar.image("data/robot_matchmaker.jpg")
+
+
+    ### TURNS START ###
 
     # Name Turn
     if not st.session_state.name_flag:
@@ -232,8 +260,10 @@ def main():
             col = columns[i]
             p_stats = stats.loc[stats.p_id==top_p_ids[i]].reset_index(drop=True)
             p_essays = essays.loc[essays.p_id==top_p_ids[i]]
+            chunk = top_chunks[i]
             with col:
                 st.title(f"Profile #{top_p_ids[i]}")
+                st.image("data/blank_pfp.png")
                 if (st.session_state.profile_score[i] is not None) and (st.session_state.profile_score[i] != 50):
                     score = st.session_state.profile_score[i]
                     score_str = f"Score: {score}/100"
@@ -253,8 +283,18 @@ def main():
                         continue
                     answer = p_essays[q].values[0]
                     if isinstance(answer, str):
-                        with st.expander(f'{q}'):
-                            st.write(answer)
+                        exp_txt = f'{q}'
+                        if (chunk in answer) or (answer in chunk):
+                            exp_txt = "🟢 "+exp_txt
+                        with st.expander(exp_txt):
+                            if chunk in answer:
+                                spltr = answer.split(chunk)
+                                txt = f'<p style="background-color:rgba(34, 139, 34, 0.3); color:white; padding:1px">{spltr[0]+chunk+spltr[1]}</p>'
+                            elif answer in chunk:
+                                txt = f'<p style="background-color:rgba(34, 139, 34, 0.3); color:white; padding:1px">{answer}</p>'
+                            else:
+                                txt = f'<p>{answer}</p>'
+                            st.markdown(txt, unsafe_allow_html=True)
 
                 st.write(top_chunks[i])
 
@@ -273,7 +313,7 @@ def main():
             # State Update
             st.session_state.seen_profiles = True
 
-            tmp_s = "Great, thanks for taking a look and giving some scores"
+            tmp_s = "Great, thanks for taking a look and giving some scores. Let me take a moment to review..."
             # Movie
             with st.chat_message("AI"):
                 st.write_stream(response_generator(tmp_s))
